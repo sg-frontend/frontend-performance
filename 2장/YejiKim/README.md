@@ -261,3 +261,32 @@ function App() {
 ![사전 로딩 - 마운트 시점](./image/9.png)
 
 - 초기 필요한 파일 로드 후에 모달 코드 다운로드
+
+## **2-5) 이미지 사전 로딩**
+
+### 이미지 사전 로딩
+
+- 이미지는 HTML/CSS에서 이미지를 사용하는 시점에 로드
+- 자바스크립트의 `Image` 객체를 사용하여 이미지 직접 로드
+
+```jsx
+useEffect(() => {
+  const component = import("./components/ImageModal");
+
+  // 이미지 사전 로딩
+  const img = new Image();
+  img.src =
+    "https://stillmed.olympic.org/media/Photos/2016/08/20/part-1/20-08-2016-Football-Men-01.jpg?interpolation=lanczos-none&resize=*:800";
+}, []);
+```
+
+![사전 로딩 - 마운트 시점](./image/10.png)
+
+- 모달 코드, 이미지 파일 함께 다운로드
+
+<br />
+
+![이미지 사전 로딩](./image/11.png)
+
+- 페이지 로드 후에 이미지를 사전 로드 해두어 모달이 열렸을 때 해당 이미지를 사용하였음
+- 사전 로드할 이미지 장수, 필요한지 여부를 판단하여 사전 로드를 적용해야함
