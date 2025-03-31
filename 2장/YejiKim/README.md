@@ -120,3 +120,57 @@ const BarGraph = styled.div`
 ## **2-3) 컴포넌트 지연 로딩**
 
 ### 번들 파일 분석
+
+```bash
+npm install --save-dev cra-bundle-analyzer
+npx cra-bundle-analyzer
+```
+
+![성능 개선 후](./image/4.png)
+
+큰 사이즈를 가진 react-image-gallery 를 해당 라이브러리가 필요한 시점에 가져오도록 코드를 분할하고 지연로딩을 적용하는 것이 좋음.
+
+### 모달 코드 분리
+
+1. ImageModal 컴포넌트, import 함수를 lazy의 함수 인자로 넘김
+2. Suspense 컴포넌트로 LazyImageModal 컴포넌트 감싸기
+3. 기존 ImageModal를 직접 import 하는 코드 주석
+
+```jsx
+// import ImageModal from './components/ImageModal'
+
+const LazyImageModal = lazy(() => import("./components/ImageModal"));
+function App() {
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <div className="App">
+      <Header />
+      <InfoTable />
+      <ButtonModal
+        onClick={() => {
+          setShowModal(true);
+        }}
+      >
+        올림픽 사진 보기
+      </ButtonModal>
+      <SurveyChart />
+      <Footer />
+      {showModal ? (
+        <Suspense fallback={<div>Loading...</div>}>
+          <LazyImageModal
+            closeModal={() => {
+              setShowModal(false);
+            }}
+          />
+        </Suspense>
+      ) : null}
+    </div>
+  );
+}
+```
+
+- '올림픽 사진 보기' 모달 클릭 시, 청크 파일이 2개로 로드
+  ![청크 파일 분리](./image/5.png)
+- 번들 파일에서 react-image-gallery 라이브러리 분리, ImageModal 컴포넌트 분리 (+ react-image-gallery 에서 참조하는 모든 라이브러리가 함께 묶여 분할)
+  ![청크 파일 분리](./image/6.png)
