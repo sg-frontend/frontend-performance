@@ -18,7 +18,7 @@ const BarWrapper = styled.div`
     position: relative;
     margin-bottom: 3px;
     padding: 8px 0;
-    background: ${({isSelected}) => isSelected ? '#dddddd' : '#f3f3f3'};
+    background: ${({ isSelected }) => isSelected ? '#dddddd' : '#f3f3f3'};
 `
 const BarInfo = styled.div`
     width: 100%;
@@ -43,10 +43,14 @@ const BarGraph = styled.div`
     position: absolute;
     left: 0;
     top: 0;
-    width: ${({width}) => width}%;
-    transition: width 1.5s ease;
+
+    width: 100%;
+    transform: scaleX(${({ width }) => width / 100}); // 퍼센트 -> 실수값으로 사용
+    transform-origin: center left; // 왼쪽 기준으로 변경
+    transition: transform 1.5s ease;
+
     height: 100%;
-    background: ${({isSelected}) => isSelected ? 'rgba(126, 198, 81, 0.7)' : 'rgb(198, 198, 198)'};
+    background: ${({ isSelected }) => isSelected ? 'rgba(126, 198, 81, 0.7)' : 'rgb(198, 198, 198)'};
     z-index: 1;
 `
 

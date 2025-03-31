@@ -86,6 +86,37 @@ npm run server
 
 ✅ 리플로우, 리페인트가 일어나는 속성을 사용하지 않고 GPU를 사용할 수 있도록 transform과 같은 속성으로 변경하기
 
-```tsx 
+- components/Bar.js
 
+```js
+const BarGraph = styled.div`
+  position: absolute;
+  left: 0;
+  top: 0;
+
+  width: 100%;
+  transform: scaleX(${({ width }) => width / 100}); // 퍼센트 -> 실수값으로 사용
+  transform-origin: center left; // 왼쪽 기준으로 변경
+  transition: transform 1.5s ease;
+
+  height: 100%;
+  background: ${({ isSelected }) =>
+    isSelected ? "rgba(126, 198, 81, 0.7)" : "rgb(198, 198, 198)"};
+  z-index: 1;
+`;
 ```
+
+### 애니메이션 최적화 결과
+
+- 최적화 전
+  ![성능 개선 전](./image/2.png)
+
+- 최적화 후
+
+  ![성능 개선 후](./image/3.png)
+
+  - 레이아웃, 페인트 작업 생략되어 작업 개수가 적어짐
+
+## **2-3) 컴포넌트 지연 로딩**
+
+### 번들 파일 분석
