@@ -174,7 +174,7 @@ export default Card;
 ### 메인 페이지 이미지 지연 로딩 처리
 
 ```js
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import BannerVideo from "../components/BannerVideo";
 import ThreeColumns from "../components/ThreeColumns";
 import TwoColumns from "../components/TwoColumns";
@@ -270,3 +270,272 @@ function MainPage(props) {
 
 export default MainPage;
 ```
+
+## **3-3) 이미지 사이즈 최적화**
+
+### 느린 이미지 로딩 분석
+
+![이미지 로딩](./image/3.png)
+이미지 사이즈가 크기 때문에 다운로드에 시간도 많이 걸리고 지연로딩을 적용하여 사용자가 사진이 완벽하게 로드 되지 않은 상태로 이용하게 되는 문제가 있음.
+
+### 이미지 포맷 종류
+
+| 포맷           | 압축 방식          | 투명도 지원       | 장점                                                                    | 단점                                        | 용도                               |
+| -------------- | ------------------ | ----------------- | ----------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------- |
+| **PNG**        | 무손실             | ✅ 알파 채널 지원 | - 원본 손상 없이 고화질 유지<br>- 투명 배경 사용 가능                   | - 파일 크기가 큼                            | 아이콘, 로고, 투명 이미지, UI 요소 |
+| **JPG (JPEG)** | 손실               | ❌                | - 파일 크기가 작음<br>- 사진에 적합                                     | - 압축 시 품질 손실 발생<br>- 투명도 미지원 | 실사 이미지, 사진, 썸네일          |
+| **WebP**       | 무손실 & 손실 지원 | ✅                | - 품질 대비 용량이 매우 작음<br>- 애니메이션 가능<br>- 다양한 압축 지원 | - 일부 구형 브라우저에서 미지원             | 웹 최적화 이미지, 썸네일, 배너     |
+
+- **사이즈** : PNG > JPG > WebP
+- **화질** : PNG == WebP > JPG
+- **호환성** : PNG == JPG > WebP
+
+### Squoosh를 사용하여 이미지 변환
+
+[Squoosh](https://squoosh.app/) : 구글에서 만든 이미지 컨버터를 사용하여 jpg 를 변환
+
+- Resize : Width, Height 600으로 설정
+- Compress : 압축 방식 (WebP), 압축률 (75) 로 설정, Effort(CPU 리소스 사용)
+
+![이미지 Squoosh](./image/4.png)
+
+-> 원본 대비 크기가 많이 줄어들었음.
+-> 모든 이미지를 WebP으로 변환하여 import
+
+```js
+import main1 from "../assets/_main1.webp";
+import main2 from "../assets/_main2.webp";
+import main3 from "../assets/_main3.webp";
+import main_items from "../assets/_main-items.webp";
+import main_parts from "../assets/_main-parts.webp";
+import main_styles from "../assets/_main-styles.webp";
+```
+
+![](./image/5.png)
+
+- 이미지 사이즈와 다운로드 시간이 크게 감소함.
+
+🚨 WebP으로만 이미지를 렌더링 할 경우에 특정 브라우저에서 제대로 렌더링 되지 않을 수 있음.
+`<picture>` 태그는 다양한 타입의 이미지 렌더링 컨테이너로 사용할 수 있음.
+
+```html
+# 뷰포트에 따라
+<picture>
+  <source media="(min-width:650px)" srcset="img_pink_flowers.jpg" />
+  <source media="(min-width:465px)" srcset="img_white_flowers.jpg" />
+  <img src="img_orange_flowers.jpg" alt="Flowers" style="width:auto;" />
+</picture>
+
+# 이미지 포맷에 따라
+<picture>
+  <source srcset="photo.avif" type="image/avif" />
+  <source srcset="photo.webp" type="image/webp" />
+  <img src="photo.jpg" alt="photo" />
+</picture>
+```
+
+---
+
+[ MainPage.js ]
+
+```js
+<ThreeColumns
+  columns={[
+    <Card image={main1} webp={main1_webp}>
+      롱보드는 아주 재밌습니다.
+    </Card>,
+    <Card image={main2} webp={main2_webp}>
+      롱보드를 타면 아주 신납니다.
+    </Card>,
+    <Card image={main3} webp={main3_webp}>
+      롱보드는 굉장히 재밌습니다.
+    </Card>,
+  ]}
+/>
+```
+
+[ Card.js ]
+
+```js
+import React, { useRef, useEffect } from "react";
+
+function Card(props) {
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+    const options = {};
+    const callback = (entries, observer) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const target = entry.target;
+          const previousSibling = target.previousSibling;
+
+          console.log("is intersecting", entry.target.dataset.src);
+          target.src = entry.target.dataset.src;
+          previousSibling.srcset = previousSibling.dataset.srcset;
+          observer.unobserve(entry.target);
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(callback, options);
+    observer.observe(imgRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="Card text-center">
+      <picture>
+        <source data-srcset={props.webp} type="image/webp" />
+        <img ref={imgRef} data-src={props.image} />
+      </picture>
+      <div className="p-5 font-semibold text-gray-700 text-xl md:text-lg lg:text-xl keep-all">
+        {props.children}
+      </div>
+    </div>
+  );
+}
+
+export default Card;
+```
+
+1. Card 컴포넌트에 webp props 추가
+2. img 태그 -> picture 태그로 변경하여 source와 img 태그 추가 (WebP 우선 로드 -> 브라우저가 지원하지 않으면 img 태그의 JPG 렌더링)
+3. 이미지 지연로딩을 위해 img 태그에서 data-src로 임시 저장 후 -> 콜백이 실행 될 때 src에 옮김
+4. source 태그도 마찬가지로 data-srcset에 임시 저장 후 -> 콜백에서 srcset으로 옮김
+
+---
+
+![](./image/6.png)
+JPG 최적화 옵션 적용하여 코드 수정
+
+```js
+import React, { useRef, useEffect } from "react";
+import BannerVideo from "../components/BannerVideo";
+import ThreeColumns from "../components/ThreeColumns";
+import TwoColumns from "../components/TwoColumns";
+import Card from "../components/Card";
+import Meta from "../components/Meta";
+import main1 from "../assets/_main1.jpg";
+import main2 from "../assets/_main2.jpg";
+import main3 from "../assets/_main3.jpg";
+import main_items from "../assets/_main-items.jpg";
+import main_parts from "../assets/_main-parts.jpg";
+import main_styles from "../assets/_main-styles.jpg";
+
+import main_items_webp from "../assets/_main-items.webp";
+import main_parts_webp from "../assets/_main-parts.webp";
+import main_styles_webp from "../assets/_main-styles.webp";
+
+import main1_webp from "../assets/_main1.webp";
+import main2_webp from "../assets/_main2.webp";
+import main3_webp from "../assets/_main3.webp";
+
+function MainPage(props) {
+  const img1 = useRef(null);
+  const img2 = useRef(null);
+  const img3 = useRef(null);
+
+  useEffect(() => {
+    const options = {};
+    const callback = (entries, observer) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const sourceEl = entry.target.previousSibling;
+          sourceEl.src = sourceEl.dataset.src;
+          sourceEl.srcset = sourceEl.dataset.srcset;
+          observer.unobserve(entry.target);
+        }
+      });
+    };
+
+    let observer = new IntersectionObserver(callback, options);
+    observer.observe(img1.current);
+    observer.observe(img2.current);
+    observer.observe(img3.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="MainPage -mt-16">
+      <BannerVideo />
+      <div className="mx-auto">
+        <ThreeColumns
+          columns={[
+            <Card image={main1} webp={main1_webp}>
+              롱보드는 아주 재밌습니다.
+            </Card>,
+            <Card image={main2} webp={main2_webp}>
+              롱보드를 타면 아주 신납니다.
+            </Card>,
+            <Card image={main3} webp={main3_webp}>
+              롱보드는 굉장히 재밌습니다.
+            </Card>,
+          ]}
+        />
+        <TwoColumns
+          bgColor={"#f4f4f4"}
+          columns={[
+            <picture>
+              <source srcset={main_items_webp} type="image/webp" />
+              <img ref={img1} data-src={main_items} />
+            </picture>,
+            <Meta
+              title={"Items"}
+              content={
+                "롱보드는 기본적으로 데크가 크기 때문에 입맛에 따라 정말 여러가지로 변형된 형태가 나올수 있습니다. 실제로 데크마다 가지는 모양, 재질, 무게는 천차만별인데, 본인의 라이딩 스타일에 맞춰 롱보드를 구매하시는게 좋습니다."
+              }
+              btnLink={"/items"}
+            />,
+          ]}
+        />
+        <TwoColumns
+          bgColor={"#fafafa"}
+          columns={[
+            <Meta
+              title={"Parts of Longboard"}
+              content={
+                "롱보드는 데크, 트럭, 휠, 킹핀, 베어링 등 여러 부품들로 구성됩니다. 롱보드를 타다보면 조금씩 고장나는 부품이 있기 마련인데, 이럴때를 위해 롱보들의 부품들에 대해서 알고 있으면 큰 도움이 됩니다."
+              }
+              btnLink={"/part"}
+            />,
+            <picture>
+              <source srcset={main_parts_webp} type="image/webp" />
+              <img ref={img2} data-src={main_parts} />
+            </picture>,
+          ]}
+          mobileReverse={true}
+        />
+        <TwoColumns
+          bgColor={"#f4f4f4"}
+          columns={[
+            <picture>
+              <source srcset={main_styles_webp} type="image/webp" />
+              <img ref={img3} data-src={main_styles} />
+            </picture>,
+            <Meta
+              title={"Riding Styles"}
+              content={
+                "롱보드 라이딩 스타일에는 크게 프리스타일, 다운힐, 프리라이딩, 댄싱이 있습니다. 보통 롱보드는 라이딩 스타일에 따라 데크의 모양이 조금씩 달라집니다. 많은 롱보드 매니아들이 각 쓰임새에 맞는 보드들을 소유하고 있습니다."
+              }
+              btnLink={"/riding-styles"}
+            />,
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default MainPage;
+```
+
+### 결과
+
+- 이미지 최적화 전
+  ![](./image/7.png)
+
+- 이미지 최적화 후
+  ![](./image/8.png)
