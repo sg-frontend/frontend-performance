@@ -539,3 +539,50 @@ export default MainPage;
 
 - 이미지 최적화 후
   ![](./image/8.png)
+
+## **3-3) 동영상 최적화**
+
+### 동영상 컨텐츠 분석
+
+![](./image/9.png)
+큰 파일 크기(54MB) 때문에 재생이 필요한 앞부분을 먼저 다운로드 한 뒤 -> 순차적으로 다음 내용 다운로드
+
+### 동영상 압축
+
+> 동영상 압축은 동영상 화질이 낮아지기 때문에 영상이 메인 콘텐츠인 서비스에서는 주의해서 사용해야 함.
+
+<br/>
+
+![](./image/10.png)
+[Media.io](https://www.media.io/) 사이트에서 **Bitrate 512Kbps, Audio 체크 해제** 후 동영상 압축 (12MB로 압축)
+
+### 압축된 동영상 적용
+
+브라우저 호환성을 위해 `video` 태그 사용
+
+```js
+<video
+  src={video}
+  className="absolute translateX--1/2 h-screen max-w-none min-w-screen -z-1 bg-black min-w-full min-h-screen"
+  autoPlay
+  loop
+  muted
+>
+  <source src={video_webm} type="video/webm" />
+  <source src={video} type="video/mp4" />
+</video>
+```
+
+### 최적화 결과
+
+![](./image/11.png)
+끊김 없이 영상이 빠르게 로드되어 재생 되고 있음.
+
+### 팁
+
+동영상 압축 시에 저하된 화질을 보완하기 위해 패턴과 필터를 이용하면 보완할 수 있음.
+
+ex : blur, 디블로킹 필터, 샤프닝 필터, 노이즈 제거 ..
+
+
+## **3-4) 폰트 최적화**
