@@ -914,3 +914,66 @@ const header = {
 - 그 외 : no-store
 
 ![](./image/25.png)
+
+## **3-6) 불필요한 CSS 제거**
+
+`npm run serve` 스크립트로 실행한 서비스의 Lighthouse 검사 결과는 아래와 같음.
+![](./image/26.png)
+![](./image/27.png)
+
+페이지에서 사용되지 않는 자바스크립트 및 CSS 리소스가 존재함.
+More tools > Coverage 패널을 활용하면, 각 리소스 중 실제로 실행되는 코드의 비율을 확인할 수 있음.
+
+![](./image/28.png)
+
+JavaScript는 조건 분기 코드가 많아, 초기에는 실행되지 않다가도 특정 동작에 의해 나중에 실행되는 경우가 많음.
+따라서 JavaScript 코드의 커버리지는 이런 특성을 감안해서 해석해야 함.
+
+![](./image/29.png)(빨강 - 아직 실행되지 않음. 회색 - 이미 실행되어 적용되었음.)
+
+해당 소스를 클릭하면 실제로 적용된 CSS 코드를 볼 수 있음. 현재 많은 유틸리티 클래스들이 실제로 적용되지 않았음.
+
+이는 Tailwind CSS 라이브러리에서 미리 제공하는 유틸 클래스들 때문인데,
+개발 단계에서는 빠르게 스타일을 적용할 수 있어 유용하지만,
+빌드 시 사용하지 않는 클래스까지 포함되면서 CSS 파일 크기가 불필요하게 커지는 문제가 발생함. <br/>
+
+### PurgeCSS
+
+[PurgeCSS](https://purgecss.com/)는 파일에 들어 있는 모든 키워드를 추출하여 해당 키워드를 이름으로 갖는 CSS 파일만 보존하고 나머지 매칭되지 않은 클래스는 모두 지우는 방식으로 CSS를 최적화 함.
+
+```bash
+npm install --save-dev purgecss
+```
+
+키워드를 추출하고자 하는 파일과 불필요한 클래스를 제거할 CSS 파일을 지정.
+
+```bash
+npx purgecss --css ./build/static/css/*.css --output ./build/static/css/ --content ./build/index.html ./build/static/js/*.js
+```
+
+`-css` 로 불필요한 클래스를 제거할 CSS 파일 선택
+
+`--output` 을 통해 동일한 위치를 지정함으로써 기존 파일 덮어 씌움
+
+`--content` 를 통해 빌드된 HTML과 JS 파일의 텍스트 키워드를 추출하여 빌드된 CSS 파일의 클래스와 비교하여 최적화 함
+
+![](./image/30.png)
+서비스 재시작 후, 다시 Coverage 탭을 살펴보면 CSS 파일 사이즈와 사용되지 않은 코드의 비율이 줄어들었음.
+
+하지만 서비스를 살펴보면 PurgeCSS가 텍스트 키워드를 추출할 때 콜론 문자를 인식하지 못 하고 자르게 되어 일부 스타일이 적용되지 않았음. PurgeCSS의 defaultExtractor 옵션을 통해 키워드를 어떤 기준으로 추출할지 정의함.
+
+purgecss.config.js
+
+```js
+module.exports = {
+  defaultExtractor: (content) => {
+    return content.match(/[\w\:\-]+/g) || [];
+  },
+};
+```
+
+대상 파일의 전체 코드를 넘겨 받고 문자열 배열을 반환함. match 메서드를 통해 정규식에 만족하는 키워드를 배열형태로 추출함.
+
+```bash
+npx purgecss --css ./build/static/css/*.css --output ./build/static/css/ --content ./build/index.html ./build/static/js/*.js --config ./purgecss.config.js
+```
