@@ -584,5 +584,224 @@ export default MainPage;
 
 ex : blur, 디블로킹 필터, 샤프닝 필터, 노이즈 제거 ..
 
-
 ## **3-4) 폰트 최적화**
+
+### 문제 상황
+
+> Network > throttle > 3G 설정
+
+![](./image/12.png)
+페이지가 로드되고 대략 21초가 지난 후에 폰트가 적용 되었음.
+
+### FOUT, FOIT
+
+- **FOUT**(Flash of Unstyled Text)
+  - 폰트 다운로드 여부와 상관 없이 기본 시스템 폰트가 먼저 보였다가 웹폰트가 다운로드 되면 폰트를 적용하는 방식 (브라우저에서 폰트를 로드)
+- **FOIT**(Flash of Invisible Text)
+  - 폰트가 완전히 다운로드되기 전까지 텍스트를 보여주지 않다가 다운로드가 완료되면 폰트가 적용된 텍스트를 띄움 (크롬, 사파리 등에서 폰트를 로드)
+
+<br/>
+
+현재 서비스는 3초만 기다리는 FOIT이기 때문에 3초 동안 폰트가 다운로드 되기를 기다리다가 3초가 지나도 다운로드 되지 않으면 시스템 기본 폰트로 텍스트를 띄움. 폰트가 다운로드 완료 되면 해당 폰트를 적용함. 폰트를 최적화 하여 폰트 적용시 발생하는 깜박임 현상을 최소화 하는 것이 중요함.
+
+### 폰트 최적화 방법
+
+#### 1) 폰트 적용 시점 제어
+
+- font-display 속성을 사용하여 폰트 적용 시점 제어
+
+> ##### 🎨 `font-display` 속성
+>
+> | 옵션       | 설명                                                 | 렌더링 동작                           | 사용자 경험                 |
+> | ---------- | ---------------------------------------------------- | ------------------------------------- | --------------------------- |
+> | `auto`     | 브라우저 기본 동작                                   | 브라우저마다 다름 (보통 FOIT 발생)    | ❓ 예측 불가, 권장되지 않음 |
+> | `block`    | 최대 3초 동안 웹폰트 기다림. 이후 fallback 폰트 표시 | 텍스트 **숨김** 상태 (FOIT 발생)      | ❌ 텍스트 지연 노출         |
+> | `swap`     | fallback 폰트 **즉시 표시**, 웹폰트 도착 시 교체     | 텍스트 **바로 보임 → 웹폰트로 전환**  | ✅ 사용자에게 빠른 피드백   |
+> | `fallback` | 0.1초 fallback 사용 후 웹폰트 로드되면 교체          | 빠르게 fallback 사용 후 교체 시도     | ✅ 빠름, 깜빡임 거의 없음   |
+> | `optional` | 느린 네트워크에서는 웹폰트 로드 생략 가능            | 조건부 로딩 (사용자 환경에 따라 다름) | ✅ 성능 최우선 환경에 적합  |
+>
+> ---
+>
+> - `fallback`, `optional` 속성은 FOIT보다는 FOUT에 가까운 방식이며,
+>   텍스트가 숨겨지는 시간은 매우 짧고 (약 100ms 이하), 이후에는 fallback 폰트가 표시됨.
+>
+> - `fallback`: 웹폰트 다운로드가 **3초를 초과**해도 도착하지 않으면 폰트를 **적용하지 않고
+>   캐시**만 수행
+> - `optional`: 네트워크 환경이 느리거나 절전 모드일 경우, **웹폰트 자체를 로드하지 않음**
+
+<br/>
+
+```css
+@font-face {
+  font-family: BMYEONSUNG;
+  src: url("./assets/fonts/BMYEONSUNG.ttf");
+  font-display: fallback;
+}
+```
+
+---
+
+`block` 속성을 사용하면 사용자 경험상 어색할 수 있기 때문에 fade-in 애니메이션으로 해결.
+폰트 다운로드가 완료되면 페이드인 효과 + 폰트가 적용된 텍스트를 보여주어야 함.
+`fontfaceobserver` 라이브러리를 통해 폰트 다운로드 시점을 알 수 있음.
+
+```bash
+npm install --save fontfaceobserver
+```
+
+```js
+import React, { useEffect } from 'react'
+import video from '../assets/banner-video.mp4'
+import video_webm from '../assets/_banner-video.webm'
+import FontFaceObserver from 'fontfaceobserver'
+
+const font = new FontFaceObserver('BMYEONSUNG');
+
+function BannerVideo() {
+
+	useEffect(() => {
+		font.load(null, 20000).then(function () {
+			console.log('font loaded');
+		})
+	}, []);
+```
+
+new 연산자를 사용하여 인스턴스 생성. load 메소드를 통해 폰트 다운로드 시점을 알 수 있음.
+테스트 문자열, 타임아웃 값을 인자로 받고 Promise 객체 반환. 지정 시간 내에 폰트가 다운로드되지 않으면 Promise에서 에러 발생.
+
+<br />
+
+```js
+import React, { useEffect, useState } from "react";
+import video from "../assets/banner-video.mp4";
+import video_webm from "../assets/_banner-video.webm";
+import FontFaceObserver from "fontfaceobserver";
+
+const font = new FontFaceObserver("BMYEONSUNG");
+
+function BannerVideo() {
+  const [isFontLoaded, setIsFontLoaded] = useState(false);
+  useEffect(() => {
+    font.load(null, 20000).then(function () {
+      console.log("font loaded");
+      setIsFontLoaded(true);
+    });
+  }, []);
+
+  return (
+    <div className="BannerVideo w-full h-screen overflow-hidden relative bg-texture">
+      <div className="absolute h-screen w-full left-1/2">
+        <video
+          src={video}
+          className="absolute translateX--1/2 h-screen max-w-none min-w-screen -z-1 bg-black min-w-full min-h-screen"
+          autoPlay
+          loop
+          muted
+        >
+          <source src={video_webm} type="video/webm" />
+          <source src={video} type="video/mp4" />
+        </video>
+      </div>
+      <div
+        className="w-full h-full flex justify-center items-center"
+        style={{ opacity: isFontLoaded ? 1 : 0, transition: "opacity 0.3s" }}
+      >
+        <div className="text-white text-center">
+          <div className="text-6xl leading-none font-semibold">KEEP</div>
+          <div className="text-6xl leading-none font-semibold">CALM</div>
+          <div className="text-3xl leading-loose">AND</div>
+          <div className="text-6xl leading-none font-semibold">RIDE</div>
+          <div className="text-5xl leading-tight font-semibold">LONGBOARD</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default BannerVideo;
+```
+
+배너 텍스트의 opacity를 폰트 로드 상태에 따라 0 -> 1로 바꾸고, trasition 속성을 설정하여 폰트가 로드될 때 애니메이션 효과를 주었음.
+
+#### 2) 폰트 파일 크기 줄이기
+
+1. 폰트 포맷 변경하기
+   - 파일 크기 : EOT > TTF/OTF > WOFF > WOFF2
+   - 🔺 WOFF, WOFF2는 버전이 낮은 브라우저에서 포맷을 지원하지 않을 수 있음. WOFF2를 우선 적용하고 브라우저가 WOFF2를 지원하지 않으면 WOFF, WOFF를 지원하지 않으면 TTF를 적용
+
+| 브라우저                 | TTF / OTF | WOFF | WOFF2       |
+| ------------------------ | --------- | ---- | ----------- |
+| **Chrome**               | ✅        | ✅   | ✅          |
+| **Firefox**              | ✅        | ✅   | ✅          |
+| **Safari**               | ✅        | ✅   | ✅ _(v10+)_ |
+| **Edge (Chromium)**      | ✅        | ✅   | ✅          |
+| **Internet Explorer 11** | ✅        | ✅   | ❌          |
+
+<br />
+
+[Transfonter](https://transfonter.org/) 서비스를 이용하여 TTF -> WOFF/WOFF2로 변환.
+
+![](./image/13.png)
+![](./image/14.png)
+파일 크기가 줄어들었음.
+
+<br/>
+
+```css
+@font-face {
+  font-family: BMYEONSUNG;
+  src: url("./assets/fonts/BMYEONSUNG.woff2") format("woff2"), url("./assets/fonts/BMYEONSUNG.woff")
+      format("woff"), url("./assets/fonts/BMYEONSUNG.ttf") format("truetype");
+  font-display: block;
+}
+```
+
+![](./image/15.png)
+최적화 시킨 WOFF2 포맷의 폰트가 로드되고 있음.
+
+2. 서브셋 폰트 사용
+
+서비스에서 웹 폰트를 사용하는 곳이 배너 영역밖에 없기 때문에 모든 문자의 폰트 정보를 가지고 있을 필요 없이 해당 문자의 폰트 정보만 가지고 있으면 됨. (`서브셋 폰트`)
+
+![](./image/16.png)
+폰트 포맷 시, Characters에 'KEEP CALM AND RIDE LONGABOARD' 를 넣으면 해당 문자에 대한 서브셋 폰트를 생성함.
+
+![](./image/17.png)
+일부 영문자를 제외했기 때문에 파일 크기가 매우 작아짐.
+
+```css
+@font-face {
+  font-family: BMYEONSUNG;
+  src: url("./assets/fonts/subset-BMYEONSUNG.woff2") format("woff2"), url("./assets/fonts/subset-BMYEONSUNG.woff")
+      format("woff"),
+    url("./assets/fonts/subset-BMYEONSUNG.ttf") format("truetype");
+  font-display: block;
+}
+```
+
+![](./image/18.png)
+폰트가 매우 빠르게 로드 되었음.
+
+`Data URI` : 리소스(예: 폰트, 이미지 등)를 **문자열 형태(Base64 등)**로 변환하여 HTML이나 CSS에 **인라인으로 삽입**
+
+특징
+
+- `data:` 스킴을 접두어로 사용하여 리소스를 인코딩된 문자열로 표현
+- 별도의 네트워크 로드 없이도 폰트를 사용할 수 있음.
+
+![](./image/19.png)
+Base64 encode 모드로 Data-URI 형태로 폰트 추출하고 해당 파일의 stylesheet.css 파일에서 src 경로 복사.
+
+```css
+@font-face {
+  font-family: BMYEONSUNG;
+    src: url('data:font/woff2;charset=utf-8;base64,d09GMgABAAAAAB9gAA0AAA.....')
+```
+
+![](./image/20.png)
+기본적으로 브라우저에서 Data-URI를 네트워크 트래픽으로 인식하지만 실제로 이미 다른 파일 내부에 임베드되어 있어서 별도 다운로드 시간이 필요하지 않음.
+
+> ### 🤔 <br/>
+>
+> 실제 폰트 내용은 App.css 에 포함되어 있기 때문에 css 파일의 다운로드 속도도 고려해야 함. 매우 큰 파일을 Data-URI 형태로 포함한다면 포함한 파일 크기가 커져 또 다른 병목을 발생시킬 수 있기 때문에 충분히 고려하여 사용해야 함.
+
