@@ -1,14 +1,18 @@
 const express = require('express')
 const app = express()
-const port = 5000
+const port = 5001
 const path = require('path')
 
 
 const header = {
     setHeaders: (res, path) => {
-        res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate')
-        res.setHeader('Expires', '-1')
-        res.setHeader('Pragma', 'no-cache')
+        if (path.includes('html')) {
+            res.setHeader('Cache-Control', 'no-cache')
+        } else if (path.endsWith('.js') || path.endsWith('.css') || path.endsWith('.webp')) {
+            res.setHeader('Cache-Control', 'max-age=31536000')
+        } else {
+            res.setHeader('Cache-Control', 'no-store')
+        }
     },
 }
 
