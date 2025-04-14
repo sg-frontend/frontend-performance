@@ -135,6 +135,123 @@ export default Card;
 
 ### 이미지 포맷 종류
 
+- PNG: 무손실 압축, 알파 채널 지원
+- JPG: 손실 압축, 더 작은 파일 크기
+- WebP: 무손실 압출, 손실 압축 모두 제공, 더 작은 파일 크기, 호환성 낮음
+  - PNG 대비 26%, JPG 대비 25~34% 작은 파일 크기
+
+### 이미지 포맷 비교
+
+- 사이즈: PNG > JPG > WebP
+- 화질: PNG = WebP > JPG
+- 호환성: PNG = JPG > WebP
+
+### WebP 포맷 호환성 표
+
+![WebP 포맷 호환성 표](./images/2.png)
+
+- IE를 제외하면 거의 모든 브라우저에서 지원하기 때문에 사용해도 괜찮을 것으로 보임.
+
+### Squoosh를 사용하여 이미지 변환
+
+- **squoosh**: https://squoosh.app/ - 구글에서 만든 이미지 압축 애플리케이션
+  - 이미지 크기 조절: 너비 600px, 높이 600px (두 배 크기로 조절)
+  - 압축 방식: `WebP`
+  - 압축률: `75`
+
+![이미지 압축 결과](./images/3.png)
+
+- 원본(6.39MB) 대비 압축률 100%로 14.7kB로 줄어들었음.
+
+하지만, 특정 브라우저에서 렌더링이 제대로 동작하지 않을 수 있기 때문에, `picture` 태그를 사용하여 이미지를 렌더링 할 수 있도록 처리해야 함.
+
+```html
+# 뷰포트에 따라
+<picture>
+  <source media="(min-width:650px)" srcset="img_pink_flowers.jpg" />
+  <source media="(min-width:465px)" srcset="img_white_flowers.jpg" />
+  <img src="img_orange_flowers.jpg" alt="Flowers" style="width:auto;" />
+</picture>
+
+# 이미지 포맷에 따라
+<picture>
+  <source srcset="photo.avif" type="image/avif" />
+  <source srcset="photo.webp" type="image/webp" />
+  <img src="photo.jpg" alt="photo" />
+</picture>
+```
+
+#### 이미지 최적화 코드
+
+```js
+// [MainPage.js]
+
+<Card image={main1} webp={main1_webp}>
+  롱보드는 아주 재밌습니다.
+</Card>
+<Card image={main2} webp={main2_webp}>
+  롱보드를 타면 아주 신납니다.
+</Card>
+<Card image={main3} webp={main3_webp}>
+  롱보드는 굉장히 재밌습니다.
+</Card>
+```
+
+```js
+// [Card.js]
+import React, { useRef, useEffect } from "react";
+
+function Card(props) {
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+    const options = {};
+    const callback = (entries, observer) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const target = entry.target;
+          const previousSibling = target.previousSibling;
+          console.log("is intersecting", entry.target.dataset.src);
+          target.src = target.dataset.src;
+          previousSibling.srcset = previousSibling.dataset.srcset;
+          observer.unobserve(entry.target);
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(callback, options);
+    observer.observe(imgRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="Card text-center">
+      <picture>
+        <source data-srcset={props.webp} type="image/webp" />
+        <img data-src={props.image} ref={imgRef} />
+      </picture>
+      <div className="p-5 font-semibold text-gray-700 text-xl md:text-lg lg:text-xl keep-all">
+        {props.children}
+      </div>
+    </div>
+  );
+}
+
+export default Card;
+```
+
+- webp 포맷을 사용하여 이미지를 렌더링 할 수 있도록 처리
+- img 태그 대신 picture 태그를 사용해 source, img 태그 추가함.(webP 우선 로드 후 지원하지 못하면 source 태그를 무시함. img태그의 JPG 렌더링)
+- picture 태그는 첫 번째 이미지를 로드하지 못하면 두 번째 이미지를 로드함.
+
+```js
+const target = entry.target; // 현재 <img> 태그
+const previousSibling = target.previousSibling; // 바로 앞의 형제 요소인 <source> 태그
+```
+
+## 동영상 최적화
+
 
 
 ## 폰트 최적화

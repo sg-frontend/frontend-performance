@@ -7,9 +7,12 @@ import Meta from '../components/Meta'
 import main1 from '../assets/main1.jpg'
 import main2 from '../assets/main2.jpg'
 import main3 from '../assets/main3.jpg'
-import main_items from '../assets/main-items.jpg'
-import main_parts from '../assets/main-parts.jpg'
-import main_styles from '../assets/main-styles.jpg'
+import main1_webp from '../assets/main1.webp'
+import main2_webp from '../assets/main2.webp'
+import main3_webp from '../assets/main3.webp'
+import main_items from '../assets/main-items.webp'
+import main_parts from '../assets/main-parts.webp'
+import main_styles from '../assets/main-styles.webp'
 
 function MainPage(props) {
 	const imgEl1 = useRef(null);
@@ -42,9 +45,9 @@ function MainPage(props) {
 			<div className="mx-auto">
 				<ThreeColumns
 					columns={[
-						<Card image={main1}>롱보드는 아주 재밌습니다.</Card>,
-						<Card image={main2}>롱보드를 타면 아주 신납니다.</Card>,
-						<Card image={main3}>롱보드는 굉장히 재밌습니다.</Card>
+						<Card image={main1} webp={main1_webp}>롱보드는 아주 재밌습니다.</Card>,
+						<Card image={main2} webp={main2_webp}>롱보드를 타면 아주 신납니다.</Card>,
+						<Card image={main3} webp={main3_webp}>롱보드는 굉장히 재밌습니다.</Card>
 					]}
 				/>
 				<TwoColumns
