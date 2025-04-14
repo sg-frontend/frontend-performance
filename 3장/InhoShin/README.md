@@ -573,8 +573,11 @@ npx purgecss --css ./build/static/css/*.css --output ./build/static/css/ --conte
 - `--output`: 동일한 위치를 지정함으로써 기존 파일에 덮어 씌움
 - `--content`: 빌드된 HTML과 JS 파일을 추가해 HTML, JS 파일의 텍스트 키워드도 모두 추출하여 빌드된 CSS 파일의 클래스와 비교하여 최적화 함
 
-![PurgeCSS 적용 전](./images/18.png)
-![PurgeCSS 적용 후](./images/19 .png)
+**PurgeCSS 적용 전**
+![PurgeCSS 적용 전](./images/17.png)
+
+**PurgeCSS 적용 후**
+![PurgeCSS 적용 후](./images/18.png)
 
 - PurgeCSS 적용 후 사용하지 않는 CSS가 제거되어 사용하지 않은 코드 비율이 변함.
 
