@@ -97,5 +97,64 @@ CLS: 레이아웃 이동은 위치를 순간적으로 변경시키면서 의도�
 
 ![image](./images/3.png)
 
+## 이미지 지연 로딩
+
+Intersection Observer API 대신, `react-lazyload` 라이브러리 사용
+
+```bash
+npm install react-lazyload
+```
+
+```js
+import LazyLoad from "react-lazyload";
+
+function Component() {
+  return (
+    <div>
+      <LazyLoad>
+        <img src="..." alt="..." />
+      </LazyLoad>
+    </div>
+  );
+}
+```
+
+**react-lazyload 라이브러리 장점**
+
+- 단순히 이미지뿐만 아니라 일반 컴포넌트도 지연 로드할 수 있다.
+
+photoItem.js 컴포넌트에서 지연 로드 적용
+
+```tsx
+import LazyLoad from "react-lazyload";
+
+function PhotoItem({ photo: { urls, alt } }) {
+  // 생략
+
+  return (
+    <ImageWrap>
+      <LazyLoad>
+        <Image
+          src={urls.small + "&t=" + new Date().getTime()}
+          alt={alt}
+          onClick={openModal}
+        />
+      </LazyLoad>
+    </ImageWrap>
+  );
+}
+```
+
+기본적으로 지연 로드 적용된 이미지는 화면에 보이지 않을 때 로드되지 않음.
+
+스크롤을 내릴 시, 이미지가 로드되는 것을 확인할 수 있음.
+
+스크롤 내릴 때 미리 이미지를 로드하고 싶다면, `offset` 속성을 사용하면 됨.
+
+```tsx
+<LazyLoad offset={100}>
+  <img src="..." alt="..." />
+</LazyLoad>
+```
 
 
