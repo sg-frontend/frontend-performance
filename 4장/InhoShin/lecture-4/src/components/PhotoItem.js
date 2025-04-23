@@ -17,11 +17,20 @@ function PhotoItem({ photo: { urls, alt } }) {
   );
 }
 
-const ImageWrap = styled.div``;
+const ImageWrap = styled.div`
+  /* 너비는 상위 컴포넌트인 PhotoList에서 정의됨 */
+  width: 100%;
+  padding-bottom: 56.25%;
+  position: relative;
+`;
 
 const Image = styled.img`
   cursor: pointer;
   width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
 `;
 
 export default PhotoItem;
