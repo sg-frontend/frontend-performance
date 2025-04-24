@@ -273,3 +273,67 @@ const category = useSelector((state) => state.category.category);
 
 리덕스 상태가 변했을 때, useSelector가 반환해야 하는 값에도 영향을 미쳤는지 함수.
 (== 이전 반환 값과 현재 반환 값을 비교하는 함수)
+
+두 번째 인자로 `shallowEqual` 값을 반환함. 참조값을 직접 비교하지 않고 객체 내부 값을 직접 비교하여 동일한지 판단함.
+
+ImageModal-Container
+
+```jsx
+import { shallowEqual } from 'react-redux';
+function ImageModalContainer() {
+  const { modalVisible, bgColor, src, alt } = useSelector(
+    (state) => ({
+      modalVisible: state.imageModal.modalVisible,
+      bgColor: state.imageModal.bgColor,
+      src: state.imageModal.src,
+      alt: state.imageModal.alt,
+    }),
+    shallowEqual
+  );
+```
+
+PhotoListContainer
+
+```jsx
+const { photos, loading } = useSelector(
+  (state) => ({
+    photos:
+      state.category.category === "all"
+        ? state.photos.data
+        : state.photos.data.filter(
+            (photo) => photo.category === state.category.category
+          ),
+    loading: state.photos.loading,
+  }),
+  shallowEqual
+);
+```
+
+코드 수정 이후, ALL 카테고리에서 이미지를 클릭해 모달을 띄우면 이미지 리스트가 렌더링되지 않음
+
+다른 카테고리에서 모달을 띄우면 모달과 관련 없는 이미지 리스트까지 리렌더링되고 있음
+
+`filter()` 메서드는 항상 새로운 배열을 반환하기 때문에 같은 데이터를 기준으로 필터링해도 결과 배열의 참조값이 매번 달라짐.
+
+filter() 결과를 **useSelector() 안에서 직접 처리하면 리렌더링이 불필요하게 발생**함.
+
+useSelector() 내부에서 filter()를 직접 호출하지 않고
+
+1. 전체 데이터와 현재 카테고리 값을 각각 선택하고,
+2. 컴포넌트 내에서 필터링하는 방식으로 변경
+
+```jsx
+const { category, allPhotos, loading } = useSelector(
+  (state) => ({
+    category: state.category.category,
+    allPhotos: state.photos.data,
+    loading: state.photos.loading,
+  }),
+  shallowEqual
+);
+
+const photos =
+  category === "all"
+    ? allPhotos
+    : allPhotos.filter((photo) => photo.category === category);
+```
