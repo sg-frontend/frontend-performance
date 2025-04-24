@@ -337,3 +337,88 @@ const photos =
     ? allPhotos
     : allPhotos.filter((photo) => photo.category === category);
 ```
+
+## 4-5) 병목 코드 최적화
+
+### 이미지 모달 분석
+
+![이미지 모달](./image/6.png)
+
+1. 이미지 클릭으로 모달 화면 띄움
+2. Network로 이미지 다운로드
+3. 이미지 로드 후 getAverageColorOfImage 함수 실행
+4. Image Decode를 통해 이미지 처리 작업
+
+### `getAverageColorOfImage` 함수 분석
+
+```jsx
+export function getAverageColorOfImage(imgElement) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext && canvas.getContext("2d");
+  const averageColor = {
+    r: 0,
+    g: 0,
+    b: 0,
+  };
+
+  if (!context) {
+    return averageColor;
+  }
+
+  const width = (canvas.width =
+    imgElement.naturalWidth || imgElement.offsetWidth || imgElement.width);
+  const height = (canvas.height =
+    imgElement.naturalHeight || imgElement.offsetHeight || imgElement.height);
+
+  context.drawImage(imgElement, 0, 0);
+
+  const imageData = context.getImageData(0, 0, width, height).data;
+  const length = imageData.length;
+
+  for (let i = 0; i < length; i += 4) {
+    averageColor.r += imageData[i];
+    averageColor.g += imageData[i + 1];
+    averageColor.b += imageData[i + 2];
+  }
+
+  const count = length / 4;
+  averageColor.r = ~~(averageColor.r / count); // ~~ => convert to int
+  averageColor.g = ~~(averageColor.g / count);
+  averageColor.b = ~~(averageColor.b / count);
+
+  return averageColor;
+}
+```
+
+해당 코드는 용량이 큰 이미지를 통째로 캔버스를 올리고 반복문을 통해 픽셀 정보를 처리하는 과정에서 성능이 느림.
+
+#### 1) 메모이제이션으로 코드 최적화하기
+
+**메모이제이션** : 어떤 함수가 동일한 입력값으로 여러 번 호출될 경우,
+매번 함수를 새로 계산하는 대신 이전에 계산한 결과를 기억해두고 재사용하는 최적화 기법
+
+```jsx
+const cache = {};
+
+export function getAverageColorOfImage(imgElement) {
+  if (cache.hasOwnProperty(imgElement.src)) {
+    return cache[imgElement.src];
+  }
+
+  // 생략
+
+  cache[imgElement.src] = averageColor;
+
+  return averageColor;
+}
+```
+
+인자 값이 객체 형태이기 때문에 인자를 그대로 key로 사용하지 않고 인자 객체가 가지고 있는 src값을 키로 사용해야 함.
+
+![메모이제이션](./image/7.png)
+
+동일한 이미지에 대해 빠르게 처리하는 것을 확인할 수 있음.
+
+> **메모이제이션 단점**
+>
+> 두 번째 실행부터는 성능이 향상된다는 장점이 있지만 여전히 첫 번째 실행은 속도가 느림. 메모이제이션을 적용할 때는 해당 로직이 동일 조건에서 충분히 반복 실행되는지 체크해야 함.
