@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { shallowEqual, useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import PhotoList from '../components/PhotoList';
 import { fetchPhotos } from '../redux/photos';
-
+import { shallowEqual } from 'react-redux';
 function PhotoListContainer() {
   const dispatch = useDispatch();
 
@@ -10,13 +10,20 @@ function PhotoListContainer() {
     dispatch(fetchPhotos());
   }, [dispatch]);
 
-  const { category, allPhotos, loading } = useSelector(state => ({
-    category: state.category.category,
-    allPhotos: state.photos.data,
-    loading: state.photos.loading,
-  }), shallowEqual);
+  const { category, allPhotos, loading } = useSelector(
+    (state) => ({
+      category: state.category.category,
+      allPhotos: state.photos.data,
+      loading: state.photos.loading,
+    }),
+    shallowEqual
+  );
 
-  const photos = category === 'all' ? allPhotos : allPhotos.filter(photo => photo.category === category);
+  const photos =
+    category === 'all'
+      ? allPhotos
+      : allPhotos.filter((photo) => photo.category === category);
+
 
   if (loading === 'error') {
     return <span>Error!</span>;

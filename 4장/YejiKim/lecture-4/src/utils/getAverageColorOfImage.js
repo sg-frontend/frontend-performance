@@ -5,6 +5,8 @@ export function getAverageColorOfImage(imgElement) {
     return cache[imgElement.src];
   }
 
+
+
   const canvas = document.createElement('canvas');
   const context = canvas.getContext && canvas.getContext('2d');
   const averageColor = {
@@ -40,5 +42,5 @@ export function getAverageColorOfImage(imgElement) {
 
   cache[imgElement.src] = averageColor;
 
-  return averageColor;
+  return averageColor
 }
