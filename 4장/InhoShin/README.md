@@ -157,4 +157,134 @@ function PhotoItem({ photo: { urls, alt } }) {
 </LazyLoad>
 ```
 
+## 리덕스 렌더링 최적화
 
+### 리액트의 렌더링
+
+렌더링이 오래 걸리는 코드, 렌더링하지 않아도 되는 컴포넌트에서 불필요하게 리렌더링이 발생하는지 등 React Developer Tools에서 확인할 수 있음.
+
+![image](./images/4.png)
+
+`Highlights updates when components render` 를 켜면 리렌더링이 발생한 컴포넌트에 테두리를 띄움.
+
+#### 문제점
+
+이미지를 클릭해서 모달을 띄울 때/모달 배경 변경/모달 닫을 때, 모달만 렌더링되지 않고 이미지 리스트 컴포넌트까지 리렌더링 발생함.
+
+#### 리렌더링의 원인
+
+: 결론부터 말하면 리덕스 때문에 발생함. 컴포넌트들이 리덕스 상태를 구독하고 있기 때문에 리덕스 상태가 변경될 때마다 불필요한 리렌더링이 발생함.
+
+```tsx
+const { photos, loading } = useSelector((state) => ({
+  photos:
+    state.category.category === "all"
+      ? state.photos.data
+      : state.photos.data.filter(
+          (photo) => photo.category === state.category.category
+        ),
+  loading: state.photos.loading,
+}));
+```
+
+현재 코드는 매번 객체를 새로 만들어서 새로운 참조 값을 반환하는 형태이므로 `useSelector`는 구독한 값이 변했다고 판단함.
+
+#### useSelector 문제 해결
+
+새로운 객체를 만들지 않도록 반환 값을 나누고, Equality Function을 사용하여 참조 값이 변경되지 않도록 함.
+
+- **객체를 새로 만들지 않도록 반환 값 나누기**
+
+```tsx
+// 기존 코드
+const { modalVisible, bgColor, src, alt } = useSelector((state) => ({
+  modalVisible: state.imageModal.modalVisible,
+  bgColor: state.imageModal.bgColor,
+  src: state.imageModal.src,
+  alt: state.imageModal.alt,
+}));
+```
+
+```tsx
+// 새로운 코드
+const modalVisible = useSelector((state) => state.imageModal.modalVisible);
+const bgColor = useSelector((state) => state.imageModal.bgColor);
+const src = useSelector((state) => state.imageModal.src);
+const alt = useSelector((state) => state.imageModal.alt);
+```
+
+객체로 묶어서 한번에 반환하던 것을 단일 값으로 반환하도록 수정함. 다른 상태 변화에 영향을 받지 않도록 함.
+
+```tsx
+// 이전 코드
+const { category } = useSelector((state) => ({
+  category: state.category.category,
+}));
+
+// 새로운 코드
+const category = useSelector((state) => state.category.category);
+```
+
+Header 컴포넌트에서 사용하는 코드도 객체로 묶어서 반환하던 것을 단일 값으로 반환하도록 수정함.
+
+객체를 생성하지 않고 원시값(primitive value)을 직접 반환함. useSelector는 이전 값과 새로운 값을 비교할 때 값 자체를 비교하게 되므로, 실제로 category 값이 변경되었을 때만 리렌더링이 발생.
+
+- **새로운 Equality Function 사용**
+
+이전 반환 값과 현재 반환 값을 비교하여 값이 변경되었을 때만 리렌더링 발생하는 방식이다.
+
+리덕스 useSelector 훅에서 옵션으로 `shallowEqual` 을 넣으면 작동한다.
+
+```tsx
+import { useSelector, shallowEqual } from "react-redux";
+
+const { modalVisible, bgColor, src, alt } = useSelector(
+  (state) => ({
+    modalVisible: state.imageModal.modalVisible,
+    bgColor: state.imageModal.bgColor,
+    src: state.imageModal.src,
+    alt: state.imageModal.alt,
+  }),
+  shallowEqual
+);
+```
+
+```tsx
+// PhotoListContainer.js
+const { photos, loading } = useSelector(
+  (state) => ({
+    photos:
+      state.category.category === "all"
+        ? state.photos.data
+        : state.photos.data.filter(
+            (photo) => photo.category === state.category.category
+          ),
+    loading: state.photos.loading,
+  }),
+  shallowEqual // 메인 이미지 리스트 리렌더링 막아줌
+);
+```
+
+#### 추가 문제: All 말고 다른 카테고리에서는 여전히 리렌더링 발생
+
+useSelector에서 filter를 사용하다보니 리렌더링 발생.
+
+**해결 방법**
+
+```tsx
+const { category, allPhotos, loading } = useSelector(
+  (state) => ({
+    category: state.category.category,
+    allPhotos: state.photos.data,
+    loading: state.photos.loading,
+  }),
+  shallowEqual
+);
+
+const photos =
+  category === "all"
+    ? allPhotos
+    : allPhotos.filter((photo) => photo.category === category);
+```
+
+전체 이미지에서 나중에 filter를 사용하여 필요한 이미지만 추려내는 방식으로 리렌더링 문제 해결.
