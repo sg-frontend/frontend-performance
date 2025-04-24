@@ -116,3 +116,53 @@ export default PhotoItem;
 
 ![검사 결과](./image/4.png)
 CLS 값이 0이 되었음. (== 레이아웃 이동이 발생하지 않음.)
+
+## 4-3) 이미지 지연 로딩
+
+```bash
+npm install --save react-lazyload
+```
+
+react-lazyload 라이브러리를 사용하면 해당 LazyLoad 자식으로 들어간 요소들은 화면에 표시되기 전까지는 렌더링되지 않다가 스크롤을 통해 화면에 들어오는 순간 로드됨.
+
+```jsx
+import LazyLoad from "react-lazy-load";
+
+function Component() {
+  return (
+    <div>
+      <LazyLoad>
+        <img src="주소" />
+      </LazyLoad>
+    </div>
+  );
+}
+```
+
+### PhotoItem 코드에 지연로딩 + offset 적용
+
+offset을 통해 이미지가 화면에 들어오는 시점보다 더 미리 이미지를 불러오는 작업 수행 가능함. 아래 코드는 화면에 들어오기 1000px만큼 미리 로드하도록 설정함.
+
+```jsx
+import LazyLoad from "react-lazy-load";
+
+function PhotoItem({ photo: { urls, alt } }) {
+  const dispatch = useDispatch();
+
+  const openModal = () => {
+    dispatch(showModal({ src: urls.full, alt }));
+  };
+
+  return (
+    <ImageWrap>
+      <LazyLoad offset={1000}>
+        <Image
+          src={urls.small + "&t=" + new Date().getTime()}
+          alt={alt}
+          onClick={openModal}
+        />
+      </LazyLoad>
+    </ImageWrap>
+  );
+}
+```
