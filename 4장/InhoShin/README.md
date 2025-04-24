@@ -288,3 +288,108 @@ const photos =
 ```
 
 전체 이미지에서 나중에 filter를 사용하여 필요한 이미지만 추려내는 방식으로 리렌더링 문제 해결.
+
+## 병목 코드 최적화
+
+### 이미지 모달 분석
+
+배경 색 늦게 뜨는 원인 -> Performance 탭에서 확인
+
+![image](./images/5.png)
+
+> 모달 컴포넌트에서 이미지 로드 시 배경 색 늦게 뜨는 원인
+
+가장 하단에 Image Decode라는 작업이 있는데, drawImage 함수 하위 작업임.
+
+해당 작업이 끝나고 새롭게 렌더링되면서 배경화면이 뜨는 것을 확인할 수 있음.
+
+### getAverageColorOfImage 함수 분석
+
+```js
+export function getAverageColorOfImage(imgElement) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext && canvas.getContext("2d");
+  const averageColor = {
+    r: 0,
+    g: 0,
+    b: 0,
+  };
+
+  if (!context) {
+    return averageColor;
+  }
+
+  const width = (canvas.width =
+    imgElement.naturalWidth || imgElement.offsetWidth || imgElement.width);
+  const height = (canvas.height =
+    imgElement.naturalHeight || imgElement.offsetHeight || imgElement.height);
+
+  context.drawImage(imgElement, 0, 0);
+
+  const imageData = context.getImageData(0, 0, width, height).data;
+  const length = imageData.length;
+
+  for (let i = 0; i < length; i += 4) {
+    averageColor.r += imageData[i];
+    averageColor.g += imageData[i + 1];
+    averageColor.b += imageData[i + 2];
+  }
+
+  const count = length / 4;
+  averageColor.r = ~~(averageColor.r / count); // ~~ => convert to int
+  averageColor.g = ~~(averageColor.g / count);
+  averageColor.b = ~~(averageColor.b / count);
+
+  return averageColor;
+}
+```
+
+픽셀 정보를 통해 하나씩 더해서 평균을 내고 있는 함수라 큰 이미지를 통째로 넣으면 렌더링 속도가 느려짐.
+
+### 메모이제이션 적용
+
+메모이제이션은 함수의 결과를 저장하여 **동일한 인자 값이 들어오면 이전 결과 값을 반환**하는 기술임.
+
+![image](./images/6.png)
+
+#### 메모이제이션 적용
+
+```js
+const cache = {};
+
+export function getAverageColorOfImage(imgElement) {
+  if (cache.hasOwnProperty(imgElement.src)) {
+    return cache[imgElement.src];
+  }
+
+  /* 중략 */
+  cache[imgElement.src] = averageColor;
+
+  return averageColor;
+}
+```
+
+같은 이미지를 여러번 모달 띄워 보면, 처음 동작에는 배경 색 적용이 느리지만, 이후에는 바로 적용되는 것을 확인할 수 있다.
+
+![image](./images/7.png)
+
+위 이미지는 동일한 이미지를 두번 실행했을 때 첫번째 실행에는 배경 색 적용이 느리지만, 두번째 실행에는 바로 적용되는 것을 확인할 수 있다.
+
+> #### 메모이제이션의 단점
+>
+> 메모이제이션을 적용해도 재활용할 수 있는 조건이 충족되지 않으면, 오히려 메모리만 잡아먹음.
+> 따라서 메모이제이션을 적용할 때는 해당 로직이 동일한 조건에서 충분히 반복 실행되는지 먼저 체크해야 함.
+
+**아직 첫번째 실행 때는 느리기 때문에 로직 수정이 필요함.**
+
+1. 이미지 크기 조절
+
+- 원본이미지로 계산하지 말고, 썸네일 이미지로 계산하여 최적화 해보자.
+- 이미지 리스트에서 클릭한 이미지의 썸네일 이미지를 사용하여 배경색 계산하면 속도가 빨라진다.
+- 이미지와 병렬적으로 배경색 계산 작업을 진행되어 배경이 먼저 계산되어 나타는걸 아래 사진을 통해 확인 할 수 있다.
+
+![image](./images/8.png)
+
+performance 패널으로 확인해보면 이전 작업 시간에 비해 매우 빠르게 완료된 것을 확인 할 수 있다.
+
+![image](./images/9.png)
