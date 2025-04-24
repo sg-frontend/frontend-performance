@@ -422,3 +422,45 @@ export function getAverageColorOfImage(imgElement) {
 > **메모이제이션 단점**
 >
 > 두 번째 실행부터는 성능이 향상된다는 장점이 있지만 여전히 첫 번째 실행은 속도가 느림. 메모이제이션을 적용할 때는 해당 로직이 동일 조건에서 충분히 반복 실행되는지 체크해야 함.
+
+#### 2) 함수 로직 개선
+
+이미지 사이즈를 줄이면, 캔버스에 그려지는 이미지 크기도 작아지기 때문에 연산 속도가 빨라짐.
+
+현재는 원본 이미지를 기준으로 배경 색을 계산하고 있음.
+이 과정을 썸네일 이미지로 대체하면 다음과 같은 이점이 있음:
+
+1. 썸네일은 크기가 작기 때문에 연산량이 줄어들고 처리 속도 빠름
+2. 원본 이미지가 로딩되기 전에 썸네일을 통해 배경 색을 빠르게 추출
+
+```jsx
+function PhotoItem({ photo: { urls, alt } }) {
+  const dispatch = useDispatch();
+
+  const openModal = (e) => {
+    dispatch(showModal({ src: urls.full, alt }));
+
+    // 썸네일 이미지로 배경색 계산 후, 리덕스에 저장
+    const averageColor = getAverageColorOfImage(e.target);
+    dispatch(setBgColor(averageColor));
+  };
+
+  return (
+    <ImageWrap>
+      <LazyLoad offset={1000}>
+        <Image
+          src={urls.small + "&t=" + new Date().getTime()}
+          alt={alt}
+          onClick={openModal}
+          crossOrigin="*"
+        />
+      </LazyLoad>
+    </ImageWrap>
+  );
+}
+```
+
+이미지가 클릭되는 시점에 이미지 요소를 함수 인자로 넘겨주고 배경 색을 설정
+
+![함수 시간](./image/8.png)
+작업 시간을 많이 단축시킬 수 있었음.
